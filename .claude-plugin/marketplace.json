@@ -1,0 +1,15 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "wise-old-claude",
+  "description": "Marketplace for the Wise Old Claude plugin",
+  "owner": {
+    "name": "darkpit2602"
+  },
+  "plugins": [
+    {
+      "name": "wise-old-claude",
+      "description": "OSRS companion backed by your live RuneLite snapshot and the OSRS Wiki",
+      "source": "./claude-plugin"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "wise-old-claude",
+  "displayName": "Wise Old Claude",
+  "version": "0.11.0",
+  "description": "OSRS companion: answers questions using your live character (via the Wise Old Claude RuneLite plugin) and the OSRS Wiki",
+  "author": {
+    "name": "darkpit2602"
+  },
+  "keywords": [
+    "osrs",
+    "runescape",
+    "runelite",
+    "wiki",
+    "game"
+  ],
+  "mcpServers": {
+    "wise-old-claude": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/mcp-server/bundle/server.mjs"
+      ]
+    }
+  }
+}
