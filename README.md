@@ -20,8 +20,8 @@ Needs [Node.js](https://nodejs.org/) 20.11 or newer. In Claude Code:
 /plugin install wise-old-claude@wise-old-claude
 ```
 
-The server ships as one prebuilt file, so there is nothing to build. Use the HTTPS URL: the
-`darkpit2602/wise-old-claude` shorthand clones over SSH and fails without a GitHub SSH key.
+The server ships as one prebuilt file, so there is nothing to build. If Node.js is missing or too old, Claude Code
+tells you when it starts.
 
 ### 2. Install the RuneLite plugin
 

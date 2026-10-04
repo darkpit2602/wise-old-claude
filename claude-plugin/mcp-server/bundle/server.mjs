@@ -29331,6 +29331,61 @@ var StdioServerTransport = class {
   }
 };
 
+// src/companion/companionBeacon.ts
+import { existsSync as existsSync2, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { join as join2 } from "node:path";
+
+// src/snapshot/snapshotDirectory.ts
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+var DEFAULT_SNAPSHOT_DIR = join(homedir(), ".runelite", "plugin-data", "wise-old-claude");
+var LEGACY_SNAPSHOT_DIR = join(homedir(), ".runelite", "wise-old-claude");
+function transitionalDirectory(current, legacy) {
+  return () => existsSync(current) || !existsSync(legacy) ? current : legacy;
+}
+function resolveDirectory(directory) {
+  return typeof directory === "string" ? directory : directory();
+}
+
+// src/companion/companionBeacon.ts
+var BEACON_INTERVAL_MS = 6e4;
+var COMPANION_DIR = "companion";
+var STATUS_FILE = "status.json";
+var CompanionBeacon = class {
+  constructor(snapshotDirectory, serverVersion, now = () => /* @__PURE__ */ new Date()) {
+    this.snapshotDirectory = snapshotDirectory;
+    this.serverVersion = serverVersion;
+    this.now = now;
+  }
+  snapshotDirectory;
+  serverVersion;
+  now;
+  /**
+   * Writes the status, atomically so the plugin never reads half a file. Only when the plugin's folder already
+   * exists: creating it early would stop RuneLite from moving an old plugin folder into place on first run.
+   *
+   * @returns whether the status was written
+   */
+  touch() {
+    const base = resolveDirectory(this.snapshotDirectory);
+    if (!existsSync2(base)) {
+      return false;
+    }
+    const directory = join2(base, COMPANION_DIR);
+    mkdirSync(directory, { recursive: true });
+    const body = { schemaVersion: 1, lastSeen: this.now().toISOString(), serverVersion: this.serverVersion };
+    const temp = join2(directory, `.status-${process.pid}-${Date.now()}.tmp`);
+    try {
+      writeFileSync(temp, JSON.stringify(body, null, 2));
+      renameSync(temp, join2(directory, STATUS_FILE));
+    } finally {
+      rmSync(temp, { force: true });
+    }
+    return true;
+  }
+};
+
 // src/cache.ts
 var TtlCache = class {
   constructor(ttlMs, now = Date.now) {
@@ -29710,23 +29765,8 @@ function describeHiscores(result) {
 }
 
 // src/guidance/guidanceRequests.ts
-import { existsSync as existsSync2, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { join as join2 } from "node:path";
-
-// src/snapshot/snapshotDirectory.ts
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-var DEFAULT_SNAPSHOT_DIR = join(homedir(), ".runelite", "plugin-data", "wise-old-claude");
-var LEGACY_SNAPSHOT_DIR = join(homedir(), ".runelite", "wise-old-claude");
-function transitionalDirectory(current, legacy) {
-  return () => existsSync(current) || !existsSync(legacy) ? current : legacy;
-}
-function resolveDirectory(directory) {
-  return typeof directory === "string" ? directory : directory();
-}
-
-// src/guidance/guidanceRequests.ts
+import { existsSync as existsSync3, mkdirSync as mkdirSync2, renameSync as renameSync2, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join3 } from "node:path";
 var GUIDANCE_DIR = "guidance";
 var REQUEST_FILE = "request.json";
 var GuidanceRequests = class {
@@ -29738,7 +29778,7 @@ var GuidanceRequests = class {
   now;
   /** This call's folder, resolved afresh so the server follows a folder the plugin moved. */
   get directory() {
-    return join2(resolveDirectory(this.snapshotDirectory), GUIDANCE_DIR);
+    return join3(resolveDirectory(this.snapshotDirectory), GUIDANCE_DIR);
   }
   /**
    * Replaces any current request with one for this target. Written to a temp file and renamed into place so
@@ -29748,20 +29788,20 @@ var GuidanceRequests = class {
    */
   request({ x, y, plane, label }) {
     const directory = this.directory;
-    mkdirSync(directory, { recursive: true });
+    mkdirSync2(directory, { recursive: true });
     const body = {
       schemaVersion: 1,
       target: { x, y, plane },
       ...label === void 0 ? {} : { label },
       requestedAt: this.now().toISOString()
     };
-    const target = join2(directory, REQUEST_FILE);
-    const temp = join2(directory, `.request-${process.pid}-${Date.now()}.tmp`);
+    const target = join3(directory, REQUEST_FILE);
+    const temp = join3(directory, `.request-${process.pid}-${Date.now()}.tmp`);
     try {
-      writeFileSync(temp, JSON.stringify(body, null, 2));
-      renameSync(temp, target);
+      writeFileSync2(temp, JSON.stringify(body, null, 2));
+      renameSync2(temp, target);
     } finally {
-      rmSync(temp, { force: true });
+      rmSync2(temp, { force: true });
     }
     return target;
   }
@@ -29772,14 +29812,14 @@ var GuidanceRequests = class {
    */
   clear() {
     const path = this.requestPath();
-    if (!existsSync2(path)) {
+    if (!existsSync3(path)) {
       return false;
     }
-    rmSync(path, { force: true });
+    rmSync2(path, { force: true });
     return true;
   }
   requestPath() {
-    return join2(this.directory, REQUEST_FILE);
+    return join3(this.directory, REQUEST_FILE);
   }
 };
 
@@ -31341,14 +31381,14 @@ function createBundledAreaResolver() {
 // src/context/gameContextStore.ts
 var import__2 = __toESM(require__(), 1);
 var import_ajv_formats2 = __toESM(require_dist(), 1);
-import { existsSync as existsSync4, readdirSync as readdirSync2, readFileSync as readFileSync2, statSync as statSync2 } from "node:fs";
-import { join as join4 } from "node:path";
+import { existsSync as existsSync5, readdirSync as readdirSync2, readFileSync as readFileSync2, statSync as statSync2 } from "node:fs";
+import { join as join5 } from "node:path";
 
 // src/snapshot/snapshotStore.ts
 var import__ = __toESM(require__(), 1);
 var import_ajv_formats = __toESM(require_dist(), 1);
-import { existsSync as existsSync3, readdirSync, readFileSync, statSync } from "node:fs";
-import { join as join3 } from "node:path";
+import { existsSync as existsSync4, readdirSync, readFileSync, statSync } from "node:fs";
+import { join as join4 } from "node:path";
 
 // src/snapshot/playerSnapshot.schema.ts
 var playerSnapshotSchema = {
@@ -32056,10 +32096,10 @@ var SnapshotStore = class {
     return { kind: "found", snapshot: data, ageSeconds, path: chosen };
   }
   listByRecency() {
-    if (!existsSync3(this.directory)) {
+    if (!existsSync4(this.directory)) {
       return [];
     }
-    return readdirSync(this.directory).filter((name) => name.endsWith(".json")).map((name) => join3(this.directory, name)).sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
+    return readdirSync(this.directory).filter((name) => name.endsWith(".json")).map((name) => join4(this.directory, name)).sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
   }
 };
 function readRsn(path) {
@@ -32222,7 +32262,7 @@ var GameContextStore = class {
   validate;
   /** This call's folder, resolved afresh so the server follows a folder the plugin moved. */
   get directory() {
-    return join4(resolveDirectory(this.snapshotDirectory), CONTEXT_DIR);
+    return join5(resolveDirectory(this.snapshotDirectory), CONTEXT_DIR);
   }
   /** The clock the store measures ages against, shared with the tools so message ages agree with file ages. */
   currentTime() {
@@ -32248,18 +32288,18 @@ var GameContextStore = class {
     return { kind: "found", context: data, ageSeconds, path: chosen };
   }
   listByRecency() {
-    if (!existsSync4(this.directory)) {
+    if (!existsSync5(this.directory)) {
       return [];
     }
-    return readdirSync2(this.directory).filter((name) => name.endsWith(".json")).map((name) => join4(this.directory, name)).sort((a, b) => statSync2(b).mtimeMs - statSync2(a).mtimeMs);
+    return readdirSync2(this.directory).filter((name) => name.endsWith(".json")).map((name) => join5(this.directory, name)).sort((a, b) => statSync2(b).mtimeMs - statSync2(a).mtimeMs);
   }
 };
 
 // src/groundItems/groundItemsStore.ts
 var import__3 = __toESM(require__(), 1);
 var import_ajv_formats3 = __toESM(require_dist(), 1);
-import { existsSync as existsSync5, readdirSync as readdirSync3, readFileSync as readFileSync3, statSync as statSync3 } from "node:fs";
-import { join as join5 } from "node:path";
+import { existsSync as existsSync6, readdirSync as readdirSync3, readFileSync as readFileSync3, statSync as statSync3 } from "node:fs";
+import { join as join6 } from "node:path";
 
 // src/groundItems/groundItems.schema.ts
 var groundItemsSchema = {
@@ -32428,7 +32468,7 @@ var GroundItemsStore = class {
   validate;
   /** This call's folder, resolved afresh so the server follows a folder the plugin moved. */
   get directory() {
-    return join5(resolveDirectory(this.snapshotDirectory), GROUND_ITEMS_DIR);
+    return join6(resolveDirectory(this.snapshotDirectory), GROUND_ITEMS_DIR);
   }
   /**
    * Loads one character's index.
@@ -32450,18 +32490,18 @@ var GroundItemsStore = class {
     return { kind: "found", index: data, ageSeconds, path: chosen };
   }
   listByRecency() {
-    if (!existsSync5(this.directory)) {
+    if (!existsSync6(this.directory)) {
       return [];
     }
-    return readdirSync3(this.directory).filter((name) => name.endsWith(".json")).map((name) => join5(this.directory, name)).sort((a, b) => statSync3(b).mtimeMs - statSync3(a).mtimeMs);
+    return readdirSync3(this.directory).filter((name) => name.endsWith(".json")).map((name) => join6(this.directory, name)).sort((a, b) => statSync3(b).mtimeMs - statSync3(a).mtimeMs);
   }
 };
 
 // src/npcs/nearbyNpcsStore.ts
 var import__4 = __toESM(require__(), 1);
 var import_ajv_formats4 = __toESM(require_dist(), 1);
-import { existsSync as existsSync6, readdirSync as readdirSync4, readFileSync as readFileSync4, statSync as statSync4 } from "node:fs";
-import { join as join6 } from "node:path";
+import { existsSync as existsSync7, readdirSync as readdirSync4, readFileSync as readFileSync4, statSync as statSync4 } from "node:fs";
+import { join as join7 } from "node:path";
 
 // src/npcs/nearbyNpcs.schema.ts
 var nearbyNpcsSchema = {
@@ -32620,7 +32660,7 @@ var NearbyNpcsStore = class {
   validate;
   /** This call's folder, resolved afresh so the server follows a folder the plugin moved. */
   get directory() {
-    return join6(resolveDirectory(this.snapshotDirectory), NPCS_DIR);
+    return join7(resolveDirectory(this.snapshotDirectory), NPCS_DIR);
   }
   /**
    * Loads one character's index.
@@ -32642,18 +32682,18 @@ var NearbyNpcsStore = class {
     return { kind: "found", index: data, ageSeconds, path: chosen };
   }
   listByRecency() {
-    if (!existsSync6(this.directory)) {
+    if (!existsSync7(this.directory)) {
       return [];
     }
-    return readdirSync4(this.directory).filter((name) => name.endsWith(".json")).map((name) => join6(this.directory, name)).sort((a, b) => statSync4(b).mtimeMs - statSync4(a).mtimeMs);
+    return readdirSync4(this.directory).filter((name) => name.endsWith(".json")).map((name) => join7(this.directory, name)).sort((a, b) => statSync4(b).mtimeMs - statSync4(a).mtimeMs);
   }
 };
 
 // src/objects/nearbyObjectsStore.ts
 var import__5 = __toESM(require__(), 1);
 var import_ajv_formats5 = __toESM(require_dist(), 1);
-import { existsSync as existsSync7, readdirSync as readdirSync5, readFileSync as readFileSync5, statSync as statSync5 } from "node:fs";
-import { join as join7 } from "node:path";
+import { existsSync as existsSync8, readdirSync as readdirSync5, readFileSync as readFileSync5, statSync as statSync5 } from "node:fs";
+import { join as join8 } from "node:path";
 
 // src/objects/nearbyObjects.schema.ts
 var nearbyObjectsSchema = {
@@ -32781,7 +32821,7 @@ var NearbyObjectsStore = class {
   validate;
   /** This call's folder, resolved afresh so the server follows a folder the plugin moved. */
   get directory() {
-    return join7(resolveDirectory(this.snapshotDirectory), OBJECTS_DIR);
+    return join8(resolveDirectory(this.snapshotDirectory), OBJECTS_DIR);
   }
   /**
    * Loads one character's index.
@@ -32803,18 +32843,18 @@ var NearbyObjectsStore = class {
     return { kind: "found", index: data, ageSeconds, path: chosen };
   }
   listByRecency() {
-    if (!existsSync7(this.directory)) {
+    if (!existsSync8(this.directory)) {
       return [];
     }
-    return readdirSync5(this.directory).filter((name) => name.endsWith(".json")).map((name) => join7(this.directory, name)).sort((a, b) => statSync5(b).mtimeMs - statSync5(a).mtimeMs);
+    return readdirSync5(this.directory).filter((name) => name.endsWith(".json")).map((name) => join8(this.directory, name)).sort((a, b) => statSync5(b).mtimeMs - statSync5(a).mtimeMs);
   }
 };
 
 // src/quests/questProgressStore.ts
 var import__6 = __toESM(require__(), 1);
 var import_ajv_formats6 = __toESM(require_dist(), 1);
-import { existsSync as existsSync8, readdirSync as readdirSync6, readFileSync as readFileSync6, statSync as statSync6 } from "node:fs";
-import { join as join8 } from "node:path";
+import { existsSync as existsSync9, readdirSync as readdirSync6, readFileSync as readFileSync6, statSync as statSync6 } from "node:fs";
+import { join as join9 } from "node:path";
 
 // src/quests/questProgress.schema.ts
 var questProgressSchema = {
@@ -32915,7 +32955,7 @@ var QuestProgressStore = class {
   validate;
   /** This call's folder, resolved afresh so the server follows a folder the plugin moved. */
   get directory() {
-    return join8(resolveDirectory(this.snapshotDirectory), QUESTS_DIR);
+    return join9(resolveDirectory(this.snapshotDirectory), QUESTS_DIR);
   }
   /** The clock journal ages are measured against. */
   currentTime() {
@@ -32940,10 +32980,10 @@ var QuestProgressStore = class {
     return { kind: "found", progress: data, path: chosen };
   }
   listByRecency() {
-    if (!existsSync8(this.directory)) {
+    if (!existsSync9(this.directory)) {
       return [];
     }
-    return readdirSync6(this.directory).filter((name) => name.endsWith(".json")).map((name) => join8(this.directory, name)).sort((a, b) => statSync6(b).mtimeMs - statSync6(a).mtimeMs);
+    return readdirSync6(this.directory).filter((name) => name.endsWith(".json")).map((name) => join9(this.directory, name)).sort((a, b) => statSync6(b).mtimeMs - statSync6(a).mtimeMs);
   }
 };
 
@@ -42545,6 +42585,9 @@ function named({ name, qty }) {
   return { name, qty };
 }
 
+// src/version.ts
+var SERVER_VERSION = "0.13.0";
+
 // src/server.ts
 var STALE_AFTER_SECONDS2 = 120;
 var QUEST_STATES = ["FINISHED", "IN_PROGRESS", "NOT_STARTED"];
@@ -42561,7 +42604,7 @@ function createServer({
   external,
   waitClock
 }) {
-  const server2 = new McpServer({ name: "wise-old-claude", version: "0.12.0" }, { instructions: SERVER_INSTRUCTIONS });
+  const server2 = new McpServer({ name: "wise-old-claude", version: SERVER_VERSION }, { instructions: SERVER_INSTRUCTIONS });
   server2.registerTool(
     "get_player_snapshot",
     {
@@ -42785,3 +42828,13 @@ var server = createServer({
   external: createExternalDataDependencies({ currentPlayer })
 });
 await server.connect(new StdioServerTransport());
+var beacon = new CompanionBeacon(snapshotDir, SERVER_VERSION);
+function announce() {
+  try {
+    beacon.touch();
+  } catch {
+    return;
+  }
+}
+announce();
+setInterval(announce, BEACON_INTERVAL_MS).unref();
