@@ -40681,12 +40681,12 @@ var McpServer = class {
     }
     return registeredPrompt;
   }
-  _createRegisteredTool(name, title, description, inputSchema, outputSchema, annotations, execution, _meta, handler) {
+  _createRegisteredTool(name, title, description, inputSchema2, outputSchema, annotations, execution, _meta, handler) {
     validateAndWarnToolName(name);
     const registeredTool = {
       title,
       description,
-      inputSchema: getZodSchemaObject(inputSchema),
+      inputSchema: getZodSchemaObject(inputSchema2),
       outputSchema: getZodSchemaObject(outputSchema),
       annotations,
       execution,
@@ -40737,7 +40737,7 @@ var McpServer = class {
       throw new Error(`Tool ${name} is already registered`);
     }
     let description;
-    let inputSchema;
+    let inputSchema2;
     let outputSchema;
     let annotations;
     if (typeof rest[0] === "string") {
@@ -40746,7 +40746,7 @@ var McpServer = class {
     if (rest.length > 1) {
       const firstArg = rest[0];
       if (isZodRawShapeCompat(firstArg)) {
-        inputSchema = rest.shift();
+        inputSchema2 = rest.shift();
         if (rest.length > 1 && typeof rest[0] === "object" && rest[0] !== null && !isZodRawShapeCompat(rest[0])) {
           annotations = rest.shift();
         }
@@ -40758,7 +40758,7 @@ var McpServer = class {
       }
     }
     const callback = rest[0];
-    return this._createRegisteredTool(name, void 0, description, inputSchema, outputSchema, annotations, { taskSupport: "forbidden" }, void 0, callback);
+    return this._createRegisteredTool(name, void 0, description, inputSchema2, outputSchema, annotations, { taskSupport: "forbidden" }, void 0, callback);
   }
   /**
    * Registers a tool with a config object and callback.
@@ -40767,8 +40767,8 @@ var McpServer = class {
     if (this._registeredTools[name]) {
       throw new Error(`Tool ${name} is already registered`);
     }
-    const { title, description, inputSchema, outputSchema, annotations, _meta } = config2;
-    return this._createRegisteredTool(name, title, description, inputSchema, outputSchema, annotations, { taskSupport: "forbidden" }, _meta, cb);
+    const { title, description, inputSchema: inputSchema2, outputSchema, annotations, _meta } = config2;
+    return this._createRegisteredTool(name, title, description, inputSchema2, outputSchema, annotations, { taskSupport: "forbidden" }, _meta, cb);
   }
   prompt(name, ...rest) {
     if (this._registeredPrompts[name]) {
@@ -41000,6 +41000,152 @@ function registerContextTools(server2, { context, player }) {
   );
 }
 
+// src/events/waitConditions.ts
+var DEFAULT_ARRIVAL_RADIUS = 2;
+function inventoryHas(snapshot, { item, quantity = 1 }) {
+  const needle = item.toLowerCase();
+  const stacks = snapshot.inventory.filter((stack) => stack.name.toLowerCase().includes(needle));
+  const total = stacks.reduce((sum, stack) => sum + stack.qty, 0);
+  return total >= quantity ? { items: stacks.map(({ name, qty }) => ({ name, qty })), total } : void 0;
+}
+function arrivedAt(position, { x, y, plane, within = DEFAULT_ARRIVAL_RADIUS }) {
+  if (plane !== void 0 && position.plane !== plane) {
+    return void 0;
+  }
+  const distance = Math.max(Math.abs(position.x - x), Math.abs(position.y - y));
+  return distance <= within ? { position: { x: position.x, y: position.y, plane: position.plane }, distance } : void 0;
+}
+function messageArrived(context, text2, since) {
+  const needle = text2.toLowerCase();
+  const message = context.messages.find(
+    (candidate) => Date.parse(candidate.at) >= since.getTime() && candidate.text.toLowerCase().includes(needle)
+  );
+  return message === void 0 ? void 0 : { message: { at: message.at, text: message.text, ...message.speaker === void 0 ? {} : { speaker: message.speaker } } };
+}
+
+// src/events/tools.ts
+var MAX_WAIT_MINUTES = 25;
+var POLL_MS = 2e3;
+var PROGRESS_EVERY_MS = 3e4;
+var realClock = {
+  now: () => /* @__PURE__ */ new Date(),
+  sleep: (ms, signal) => new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener("abort", () => (clearTimeout(timer), resolve()), { once: true });
+  })
+};
+var CONDITIONS = ["inventory_has", "arrived_at", "message_contains"];
+var inputSchema = {
+  until: external_exports.enum(CONDITIONS).describe("What to wait for"),
+  item: external_exports.string().min(1).optional().describe('inventory_has: partial item name, e.g. "iron bar"'),
+  quantity: external_exports.number().int().min(1).optional().describe("inventory_has: how many to carry in total, default 1"),
+  x: external_exports.number().int().optional().describe("arrived_at: destination tile x"),
+  y: external_exports.number().int().optional().describe("arrived_at: destination tile y"),
+  plane: external_exports.number().int().min(0).max(3).optional().describe("arrived_at: required plane; any when omitted"),
+  within: external_exports.number().int().min(0).max(30).optional().describe("arrived_at: tiles away that still count, default 2"),
+  text: external_exports.string().min(1).optional().describe('message_contains: part of a game message, e.g. "You smelt"'),
+  timeoutMinutes: external_exports.number().int().min(1).max(MAX_WAIT_MINUTES).optional().describe(`Give up after this long, default ${MAX_WAIT_MINUTES}`)
+};
+function registerEventTools(server2, { store: store2, context, clock = realClock }) {
+  server2.registerTool(
+    "wait_for",
+    {
+      title: "Wait for something in game",
+      description: `Waits until the player does something, then returns once with what happened: an item in the inventory (until: inventory_has, item, optional quantity), arriving near a tile (until: arrived_at, x, y, optional plane and within) or a new game message (until: message_contains, text; only messages after the call count). Use it when the user asks to act once something happens. Returns at once when already true. Long waits run in the background; after timeoutMinutes (max ${MAX_WAIT_MINUTES}) it returns outcome timed_out and can be called again.`,
+      inputSchema,
+      annotations: { readOnlyHint: true }
+    },
+    async (args, extra) => {
+      const started = clock.now();
+      const check2 = checkFor(args, { store: store2, context }, started);
+      if (typeof check2 === "string") {
+        return failure2(check2);
+      }
+      const progressToken = extra._meta?.progressToken;
+      const report = progressToken === void 0 ? void 0 : (elapsedMs) => extra.sendNotification({
+        method: "notifications/progress",
+        params: { progressToken, progress: Math.round(elapsedMs / 1e3), message: `waiting for ${args.until}` }
+      });
+      return waitUntil(check2, { clock, signal: extra.signal, started, timeoutMinutes: args.timeoutMinutes ?? MAX_WAIT_MINUTES, report });
+    }
+  );
+}
+function checkFor(args, { store: store2, context }, since) {
+  const rsn = currentRsn(store2);
+  switch (args.until) {
+    case "inventory_has": {
+      const { item, quantity } = args;
+      return item === void 0 ? "inventory_has needs item" : snapshotCheck(store2, rsn, (snapshot) => inventoryHas(snapshot, { item, quantity }));
+    }
+    case "arrived_at": {
+      const { x, y, plane, within } = args;
+      if (x === void 0 || y === void 0) {
+        return "arrived_at needs x and y";
+      }
+      return snapshotCheck(store2, rsn, (snapshot) => arrivedAt(snapshot.position, { x, y, plane, within }));
+    }
+    case "message_contains": {
+      const { text: text2 } = args;
+      return text2 === void 0 ? "message_contains needs text" : contextCheck(context, rsn, (loaded) => messageArrived(loaded, text2, since));
+    }
+  }
+}
+function currentRsn(store2) {
+  const loaded = store2.load();
+  return loaded.kind === "found" ? loaded.snapshot.rsn : void 0;
+}
+function snapshotCheck(store2, rsn, holds) {
+  return () => {
+    const loaded = store2.load(rsn);
+    if (loaded.kind === "missing") {
+      return { kind: "failed", result: failure2(`No snapshot in ${loaded.directory}. Is RuneLite running with the Wise Old Claude plugin enabled?`) };
+    }
+    if (loaded.kind === "invalid") {
+      return { kind: "failed", result: contractMismatch("Snapshot", loaded) };
+    }
+    const evidence = holds(loaded.snapshot);
+    return evidence === void 0 ? { kind: "waiting" } : { kind: "met", evidence };
+  };
+}
+function contextCheck(context, rsn, holds) {
+  return () => {
+    const loaded = context.load(rsn);
+    if (loaded.kind === "missing") {
+      return { kind: "failed", result: failure2("No game context found. It is written by the Wise Old Claude plugin while logged in.") };
+    }
+    if (loaded.kind === "invalid") {
+      return { kind: "failed", result: contractMismatch("Game context", loaded) };
+    }
+    const evidence = holds(loaded.context);
+    return evidence === void 0 ? { kind: "waiting" } : { kind: "met", evidence };
+  };
+}
+async function waitUntil(check2, { clock, signal, started, timeoutMinutes, report }) {
+  const deadline = started.getTime() + timeoutMinutes * 6e4;
+  let reported = started.getTime();
+  for (let polls = 0; ; polls++) {
+    const result = check2();
+    const elapsedMs = clock.now().getTime() - started.getTime();
+    if (result.kind === "failed") {
+      return result.result;
+    }
+    if (result.kind === "met") {
+      return json2({ outcome: "met", alreadyMet: polls === 0, waitedSeconds: Math.round(elapsedMs / 1e3), ...result.evidence });
+    }
+    if (clock.now().getTime() >= deadline) {
+      return json2({ outcome: "timed_out", waitedSeconds: Math.round(elapsedMs / 1e3) });
+    }
+    await clock.sleep(POLL_MS, signal);
+    if (signal.aborted) {
+      return failure2("Wait cancelled.");
+    }
+    if (report !== void 0 && clock.now().getTime() - reported >= PROGRESS_EVERY_MS) {
+      reported = clock.now().getTime();
+      await report(reported - started.getTime());
+    }
+  }
+}
+
 // src/sceneIndexHeader.ts
 function sceneIndexHeader({ index, ageSeconds, playerPosition, coverage }) {
   const indexOrigin = { x: index.origin.x, y: index.origin.y, plane: index.origin.plane };
@@ -41208,6 +41354,13 @@ For "where am I in <quest>?" or the next step of a quest the player is doing, ca
 its \`currentStep\` and remaining journal lines, in the game's own words, before reaching for the wiki walkthrough. If it
 has no saved journal or marks it outdated, ask the player to open the quest journal for that quest once (Quest List,
 click the quest), then call it again.
+
+When the user wants something done once they have done something in game ("when I have the iron bars, guide me to a
+furnace", "tell me when I reach Varrock", "once the bank opens"), call \`wait_for\` once with that one condition, tell
+the user in one sentence that you are waiting, then act on its result. Do not poll the snapshot yourself. A long wait
+runs in the background and its result arrives later; on \`timed_out\`, call it again only if the user still wants it.
+To act once the player reaches a \`guide_to\` destination, wait with \`until: "message_contains"\` and
+\`text: "You have arrived at"\`: the plugin posts that line when its own guidance ends, so no tile is needed.
 
 Use \`wiki_search\` and \`wiki_page\` for facts instead of recall, and cite the wiki page URL.
 Use \`get_item_prices\` only for accounts that can trade, or when the user explicitly asks about prices.
@@ -42405,9 +42558,10 @@ function createServer({
   questProgress,
   wiki,
   resolver,
-  external
+  external,
+  waitClock
 }) {
-  const server2 = new McpServer({ name: "wise-old-claude", version: "0.11.0" }, { instructions: SERVER_INSTRUCTIONS });
+  const server2 = new McpServer({ name: "wise-old-claude", version: "0.12.0" }, { instructions: SERVER_INSTRUCTIONS });
   server2.registerTool(
     "get_player_snapshot",
     {
@@ -42500,6 +42654,7 @@ function createServer({
   registerGroundItemTools(server2, { groundItems, player: () => tradingPlayerFrom(store2.load()) });
   registerContextTools(server2, { context, player: () => currentPlayerFrom(store2.load())?.rsn });
   registerQuestTools(server2, { progress: questProgress, player: () => questPlayerFrom(store2.load()) });
+  registerEventTools(server2, { store: store2, context, clock: waitClock });
   return server2;
 }
 function isFresh(result) {

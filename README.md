@@ -46,6 +46,7 @@ it. Ask it to "show me the way" and it draws a route in RuneLite (through the
 | `get_recent_messages`, `get_open_interface` | Your own recent game messages, and the shop, bank or dialogue open right now |
 | `describe_location`, `rank_by_distance` | Names a tile; orders places by distance |
 | `guide_to`, `clear_guidance` | Draws or removes a route in RuneLite |
+| `wait_for` | Waits for something you do in game (an item in your inventory, reaching a place, a game message), then lets Claude act on it |
 | `wiki_search`, `wiki_page` | The OSRS Wiki |
 | `get_item_prices`, `get_hiscores`, `get_wikisync_progress` | Live GE prices, hiscores, and WikiSync progress |
 

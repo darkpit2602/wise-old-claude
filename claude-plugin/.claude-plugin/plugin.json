@@ -1,7 +1,7 @@
 {
   "name": "wise-old-claude",
   "displayName": "Wise Old Claude",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "OSRS companion: answers questions using your live character (via the Wise Old Claude RuneLite plugin) and the OSRS Wiki",
   "author": {
     "name": "darkpit2602"
