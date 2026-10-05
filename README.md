@@ -41,6 +41,7 @@ it. Ask it to "show me the way" and it draws a route in RuneLite (through the
 | `get_player_snapshot` | Your character: account type, levels, location, inventory, equipment, quests, current target, slayer task, diaries, timers and more |
 | `search_bank` | Items in your last-seen bank |
 | `get_quests`, `get_quest_progress` | Quests by status, and the steps left in a quest whose journal you opened |
+| `get_quest_guide` | Your next steps in the wiki's optimal quest guide (Ironman version for ironmen), with levels to train first and upcoming steps grouped by location for multiquesting |
 | `find_nearest` | Nearest banks, deposit boxes, altars, anvils, furnaces, fairy rings, spirit trees, agility courses, minigames |
 | `find_nearby_objects`, `find_nearby_npcs`, `find_ground_items` | Objects, NPCs and loot around you, nearest first; objects also world-wide |
 | `get_recent_messages`, `get_open_interface` | Your own recent game messages, and the shop, bank or dialogue open right now |

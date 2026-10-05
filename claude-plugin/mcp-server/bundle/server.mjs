@@ -7393,7 +7393,7 @@ var require__ = __commonJS({
     var discriminator_1 = require_discriminator();
     var json_schema_2020_12_1 = require_json_schema_2020_12();
     var META_SCHEMA_ID = "https://json-schema.org/draft/2020-12/schema";
-    var Ajv20207 = class extends core_1.default {
+    var Ajv20202 = class extends core_1.default {
       constructor(opts = {}) {
         super({
           ...opts,
@@ -7420,11 +7420,11 @@ var require__ = __commonJS({
         return this.opts.defaultMeta = super.defaultMeta() || (this.getSchema(META_SCHEMA_ID) ? META_SCHEMA_ID : void 0);
       }
     };
-    exports.Ajv2020 = Ajv20207;
-    module.exports = exports = Ajv20207;
-    module.exports.Ajv2020 = Ajv20207;
+    exports.Ajv2020 = Ajv20202;
+    module.exports = exports = Ajv20202;
+    module.exports.Ajv2020 = Ajv20202;
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.default = Ajv20207;
+    exports.default = Ajv20202;
     var validate_1 = require_validate();
     Object.defineProperty(exports, "KeywordCxt", { enumerable: true, get: function() {
       return validate_1.KeywordCxt;
@@ -7995,12 +7995,12 @@ var require_dist = __commonJS({
     var fastName = new codegen_1.Name("fastFormats");
     var formatsPlugin = (ajv, opts = { keywords: true }) => {
       if (Array.isArray(opts)) {
-        addFormats7(ajv, opts, formats_1.fullFormats, fullName);
+        addFormats2(ajv, opts, formats_1.fullFormats, fullName);
         return ajv;
       }
       const [formats, exportName] = opts.mode === "fast" ? [formats_1.fastFormats, fastName] : [formats_1.fullFormats, fullName];
       const list = opts.formats || formats_1.formatNames;
-      addFormats7(ajv, list, formats, exportName);
+      addFormats2(ajv, list, formats, exportName);
       if (opts.keywords)
         (0, limit_1.default)(ajv);
       return ajv;
@@ -8012,7 +8012,7 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats7(ajv, list, fs, exportName) {
+    function addFormats2(ajv, list, fs, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
@@ -31379,14 +31379,20 @@ function createBundledAreaResolver() {
 }
 
 // src/context/gameContextStore.ts
-var import__2 = __toESM(require__(), 1);
-var import_ajv_formats2 = __toESM(require_dist(), 1);
 import { existsSync as existsSync5, readdirSync as readdirSync2, readFileSync as readFileSync2, statSync as statSync2 } from "node:fs";
 import { join as join5 } from "node:path";
 
-// src/snapshot/snapshotStore.ts
+// src/contractValidator.ts
 var import__ = __toESM(require__(), 1);
 var import_ajv_formats = __toESM(require_dist(), 1);
+var addFormats = import_ajv_formats.default;
+function compileContract(schema) {
+  const ajv = new import__.Ajv2020({ allErrors: true, removeAdditional: true });
+  addFormats(ajv);
+  return ajv.compile(schema);
+}
+
+// src/snapshot/snapshotStore.ts
 import { existsSync as existsSync4, readdirSync, readFileSync, statSync } from "node:fs";
 import { join as join4 } from "node:path";
 
@@ -32007,6 +32013,36 @@ var playerSnapshotSchema = {
           }
         }
       }
+    },
+    "teleportCooldowns": {
+      "description": "When Home Teleport and the minigame teleport (Grouping) can next be cast, from the game's record of the last cast, so it stays valid across sessions. A time in the past means ready now. The game stores the cast to the minute, so a ready time can be up to a minute early. Optional: plugins older than this field omit it.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "homeReadyAt",
+        "minigameReadyAt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "homeReadyAt": {
+          "description": "30 minutes after the last Home Teleport; null when never cast.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "minigameReadyAt": {
+          "description": "20 minutes after the last minigame teleport; null when never cast.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
     }
   },
   "$defs": {
@@ -32060,14 +32096,11 @@ var playerSnapshotSchema = {
 };
 
 // src/snapshot/snapshotStore.ts
-var addFormats = import_ajv_formats.default;
 var SnapshotStore = class {
   constructor(snapshotDirectory = DEFAULT_SNAPSHOT_DIR, now = () => /* @__PURE__ */ new Date()) {
     this.snapshotDirectory = snapshotDirectory;
     this.now = now;
-    const ajv = new import__.Ajv2020({ allErrors: true });
-    addFormats(ajv);
-    this.validate = ajv.compile(playerSnapshotSchema);
+    this.validate = compileContract(playerSnapshotSchema);
   }
   snapshotDirectory;
   now;
@@ -32247,15 +32280,12 @@ var gameContextSchema = {
 };
 
 // src/context/gameContextStore.ts
-var addFormats2 = import_ajv_formats2.default;
 var CONTEXT_DIR = "context";
 var GameContextStore = class {
   constructor(snapshotDirectory, now = () => /* @__PURE__ */ new Date()) {
     this.snapshotDirectory = snapshotDirectory;
     this.now = now;
-    const ajv = new import__2.Ajv2020({ allErrors: true });
-    addFormats2(ajv);
-    this.validate = ajv.compile(gameContextSchema);
+    this.validate = compileContract(gameContextSchema);
   }
   snapshotDirectory;
   now;
@@ -32296,8 +32326,6 @@ var GameContextStore = class {
 };
 
 // src/groundItems/groundItemsStore.ts
-var import__3 = __toESM(require__(), 1);
-var import_ajv_formats3 = __toESM(require_dist(), 1);
 import { existsSync as existsSync6, readdirSync as readdirSync3, readFileSync as readFileSync3, statSync as statSync3 } from "node:fs";
 import { join as join6 } from "node:path";
 
@@ -32453,15 +32481,12 @@ var groundItemsSchema = {
 };
 
 // src/groundItems/groundItemsStore.ts
-var addFormats3 = import_ajv_formats3.default;
 var GROUND_ITEMS_DIR = "ground-items";
 var GroundItemsStore = class {
   constructor(snapshotDirectory, now = () => /* @__PURE__ */ new Date()) {
     this.snapshotDirectory = snapshotDirectory;
     this.now = now;
-    const ajv = new import__3.Ajv2020({ allErrors: true });
-    addFormats3(ajv);
-    this.validate = ajv.compile(groundItemsSchema);
+    this.validate = compileContract(groundItemsSchema);
   }
   snapshotDirectory;
   now;
@@ -32498,8 +32523,6 @@ var GroundItemsStore = class {
 };
 
 // src/npcs/nearbyNpcsStore.ts
-var import__4 = __toESM(require__(), 1);
-var import_ajv_formats4 = __toESM(require_dist(), 1);
 import { existsSync as existsSync7, readdirSync as readdirSync4, readFileSync as readFileSync4, statSync as statSync4 } from "node:fs";
 import { join as join7 } from "node:path";
 
@@ -32645,15 +32668,12 @@ var nearbyNpcsSchema = {
 };
 
 // src/npcs/nearbyNpcsStore.ts
-var addFormats4 = import_ajv_formats4.default;
 var NPCS_DIR = "npcs";
 var NearbyNpcsStore = class {
   constructor(snapshotDirectory, now = () => /* @__PURE__ */ new Date()) {
     this.snapshotDirectory = snapshotDirectory;
     this.now = now;
-    const ajv = new import__4.Ajv2020({ allErrors: true });
-    addFormats4(ajv);
-    this.validate = ajv.compile(nearbyNpcsSchema);
+    this.validate = compileContract(nearbyNpcsSchema);
   }
   snapshotDirectory;
   now;
@@ -32690,8 +32710,6 @@ var NearbyNpcsStore = class {
 };
 
 // src/objects/nearbyObjectsStore.ts
-var import__5 = __toESM(require__(), 1);
-var import_ajv_formats5 = __toESM(require_dist(), 1);
 import { existsSync as existsSync8, readdirSync as readdirSync5, readFileSync as readFileSync5, statSync as statSync5 } from "node:fs";
 import { join as join8 } from "node:path";
 
@@ -32806,15 +32824,12 @@ var nearbyObjectsSchema = {
 };
 
 // src/objects/nearbyObjectsStore.ts
-var addFormats5 = import_ajv_formats5.default;
 var OBJECTS_DIR = "objects";
 var NearbyObjectsStore = class {
   constructor(snapshotDirectory, now = () => /* @__PURE__ */ new Date()) {
     this.snapshotDirectory = snapshotDirectory;
     this.now = now;
-    const ajv = new import__5.Ajv2020({ allErrors: true });
-    addFormats5(ajv);
-    this.validate = ajv.compile(nearbyObjectsSchema);
+    this.validate = compileContract(nearbyObjectsSchema);
   }
   snapshotDirectory;
   now;
@@ -32851,8 +32866,6 @@ var NearbyObjectsStore = class {
 };
 
 // src/quests/questProgressStore.ts
-var import__6 = __toESM(require__(), 1);
-var import_ajv_formats6 = __toESM(require_dist(), 1);
 import { existsSync as existsSync9, readdirSync as readdirSync6, readFileSync as readFileSync6, statSync as statSync6 } from "node:fs";
 import { join as join9 } from "node:path";
 
@@ -32940,15 +32953,12 @@ var questProgressSchema = {
 };
 
 // src/quests/questProgressStore.ts
-var addFormats6 = import_ajv_formats6.default;
 var QUESTS_DIR = "quests";
 var QuestProgressStore = class {
   constructor(snapshotDirectory, now = () => /* @__PURE__ */ new Date()) {
     this.snapshotDirectory = snapshotDirectory;
     this.now = now;
-    const ajv = new import__6.Ajv2020({ allErrors: true });
-    addFormats6(ajv);
-    this.validate = ajv.compile(questProgressSchema);
+    this.validate = compileContract(questProgressSchema);
   }
   snapshotDirectory;
   now;
@@ -39395,7 +39405,7 @@ function mergeCapabilities(base, additional) {
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
 var import_ajv = __toESM(require_ajv(), 1);
-var import_ajv_formats7 = __toESM(require_dist(), 1);
+var import_ajv_formats2 = __toESM(require_dist(), 1);
 function createDefaultAjvInstance() {
   const ajv = new import_ajv.default({
     strict: false,
@@ -39403,8 +39413,8 @@ function createDefaultAjvInstance() {
     validateSchema: false,
     allErrors: true
   });
-  const addFormats7 = import_ajv_formats7.default;
-  addFormats7(ajv);
+  const addFormats2 = import_ajv_formats2.default;
+  addFormats2(ajv);
   return ajv;
 }
 var AjvJsonSchemaValidator = class {
@@ -41382,6 +41392,8 @@ the world. Prefer these over \`get_wikisync_progress\`, which needs a separate p
 \`get_item_prices\`, and remember COMPLETE and CANCELLED offers still wait to be collected. \`birdhouses\` gives each
 Fossil Island bird house space as last seen there (\`checkedAt\`), with \`ready\` or \`minutesLeft\` for seeded ones; a
 seeded house without \`readyAt\` was seeded while the plugin was not watching, so say its fill time is unknown.
+\`teleportCooldowns\` says whether Home Teleport and the minigame teleport are \`ready\`, or their \`minutesLeft\`; when
+suggesting either as a route, check it first.
 
 For "what dropped?" or loot near the player use \`find_ground_items\` (no name lists the most valuable stacks first); for
 ironmen it already hides other players' drops, so never suggest picking those up.
@@ -41394,6 +41406,11 @@ For "where am I in <quest>?" or the next step of a quest the player is doing, ca
 its \`currentStep\` and remaining journal lines, in the game's own words, before reaching for the wiki walkthrough. If it
 has no saved journal or marks it outdated, ask the player to open the quest journal for that quest once (Quest List,
 click the quest), then call it again.
+For "what quest next?", questing order, multiquesting or the optimal quest guide, call \`get_quest_guide\`: it reads the
+wiki's guide (Ironman version for ironmen) against the player's quests and diaries and returns the next rows, the journal
+step of every quest in progress, and the upcoming steps grouped by location. Plan trips from \`byLocation\` so one visit
+covers several quests, say when a row is \`behind\` (skipped earlier), and never read the guide with \`wiki_page\`, which
+cuts it off.
 
 When the user wants something done once they have done something in game ("when I have the iron bars, guide me to a
 furnace", "tell me when I reach Varrock", "once the bank opens"), call \`wait_for\` once with that one condition, tell
@@ -42429,6 +42446,394 @@ function noteFor(quest, status, journal) {
   return void 0;
 }
 
+// src/questGuide/wikitextToPlain.ts
+var INNERMOST_TEMPLATE = /\{\{([^{}]*)\}\}/;
+var ICON_BEFORE_LINK = /\{\{SCP\|[^|}]+(?:\|link=yes)?\}\}(?=\[\[)/gi;
+function wikitextToPlain(wikitext) {
+  const linked = wikitext.replace(/<!--[\s\S]*?-->/g, "").replace(ICON_BEFORE_LINK, "").replace(/\[\[(?:File|Image):([^|\]]+?)(?:\.\w+)?(?:\|[^\]]*)?\]\]/gi, "$1").replace(/\[\[[^\]|]+\|([^\]]+)\]\]/g, "$1").replace(/\[\[([^\]]+)\]\]/g, "$1");
+  const rendered = renderTemplates(linked).replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").replace(/'{2,}/g, "");
+  return formatLines(rendered);
+}
+function renderTemplates(text2) {
+  let current = text2;
+  for (let match = INNERMOST_TEMPLATE.exec(current); match !== null; match = INNERMOST_TEMPLATE.exec(current)) {
+    current = current.slice(0, match.index) + renderTemplate(match[1] ?? "") + current.slice(match.index + match[0].length);
+  }
+  return current;
+}
+var TEMPLATE_RENDERERS = {
+  scp: ({ positional: [skill = "", level] }) => level === void 0 ? skill : `${level} ${skill}`,
+  plink: ({ positional: [page = ""], named: named2 }) => named2.get("txt") ?? page,
+  coins: ({ positional: [amount = ""] }) => `${formatAmount(amount)} coins`,
+  floornumber: ({ named: named2 }) => floorName(named2.get("uk")),
+  gep: ({ positional: [item = ""] }) => item,
+  "optimal quest/action": ({ positional: [action = ""] }) => action
+};
+function renderTemplate(call) {
+  const [rawName = "", ...rawArgs] = call.split("|");
+  const name = rawName.trim().toLowerCase();
+  if (name === "checklist") {
+    return rawArgs.join("|");
+  }
+  return TEMPLATE_RENDERERS[name]?.(templateArguments(rawArgs)) ?? "";
+}
+function templateArguments(args) {
+  const positional = [];
+  const named2 = /* @__PURE__ */ new Map();
+  for (const arg of args) {
+    const equals = arg.indexOf("=");
+    if (equals === -1) {
+      positional.push(arg.trim());
+    } else {
+      named2.set(arg.slice(0, equals).trim().toLowerCase(), arg.slice(equals + 1).trim());
+    }
+  }
+  return { positional, named: named2 };
+}
+function formatAmount(amount) {
+  const value = Number(amount);
+  return Number.isFinite(value) ? value.toLocaleString("en-US") : amount;
+}
+function floorName(ukFloor) {
+  const floor = Number(ukFloor);
+  if (!Number.isInteger(floor) || floor < 0) {
+    return "floor";
+  }
+  if (floor === 0) {
+    return "ground floor";
+  }
+  const suffix = floor % 100 >= 11 && floor % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][floor % 10] ?? "th";
+  return `${floor}${suffix} floor`;
+}
+function formatLines(text2) {
+  return text2.split("\n").map((line) => {
+    const bullet = /^(\*+)\s*(.*)$/.exec(line.trim());
+    const content = bullet === null ? line.trim() : `${"  ".repeat((bullet[1] ?? "*").length - 1)}- ${bullet[2] ?? ""}`;
+    return content.replace(/(\S) {2,}/g, "$1 ").trimEnd();
+  }).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+// src/questGuide/guideParser.ts
+var QUEST_CELL = 0;
+var NOTES_CELL = 4;
+var LOCATION_CELL = 5;
+var GUIDE_TABLE_MARKER = /data-tableid="OQG|oqg-table/;
+var TRAINING_LINE = /^\{\{optimal quest\/train\|([^|}]+)\|(\d+)\}\}(.*)$/i;
+var CELL_START = /^\s*\|(?![-}+])/;
+var ACTION_LINE = /^\{\{optimal quest\/action\|.*\}\}$/i;
+var PAGE_LINK = /\[\[([^\]|#]+)[^\]]*\]\]/g;
+var START_GOAL = /^\s*(?:partial|partially|start)\b/i;
+function parseQuestGuide(wikitext) {
+  const table = guideTable(wikitext);
+  if (table === void 0) {
+    return [];
+  }
+  const rows = [];
+  let pendingTraining = [];
+  for (const block of table.split(/^\|-/m).slice(1)) {
+    const { cellLines, training, actions } = separateFollowUps(block.split("\n").slice(1));
+    const cells = splitCells(cellLines);
+    if (cells[QUEST_CELL] !== void 0) {
+      rows.push(buildRow(rows.length + 1, cells, { trainFirst: pendingTraining, afterwards: actions }));
+      pendingTraining = training;
+    }
+  }
+  return rows;
+}
+function guideTable(wikitext) {
+  const marker = wikitext.search(GUIDE_TABLE_MARKER);
+  if (marker === -1) {
+    return void 0;
+  }
+  const start = wikitext.lastIndexOf("{|", marker);
+  const end = wikitext.indexOf("\n|}", marker);
+  return wikitext.slice(start === -1 ? marker : start, end === -1 ? void 0 : end);
+}
+function separateFollowUps(lines) {
+  const cellLines = [];
+  const training = [];
+  const actions = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const target = TRAINING_LINE.exec(trimmed);
+    if (target !== null) {
+      training.push(trainingTarget(target[1] ?? "", target[2] ?? "", target[3] ?? ""));
+    } else if (ACTION_LINE.test(trimmed)) {
+      actions.push(wikitextToPlain(trimmed));
+    } else {
+      cellLines.push(line);
+    }
+  }
+  return { cellLines, training, actions };
+}
+function trainingTarget(skill, level, aside) {
+  const note = wikitextToPlain(aside).replace(/^\((.*)\)$/, "$1");
+  return { skill: skill.trim().toLowerCase(), level: Number(level), ...note === "" ? {} : { note } };
+}
+function splitCells(lines) {
+  const cells = [];
+  let templateDepth = 0;
+  for (const line of lines) {
+    if (templateDepth === 0 && CELL_START.test(line)) {
+      cells.push([stripCellAttributes(line.replace(CELL_START, ""))]);
+    } else {
+      cells.at(-1)?.push(line);
+    }
+    templateDepth = Math.max(0, templateDepth + occurrences(line, "{{") - occurrences(line, "}}"));
+  }
+  return cells.map((cell) => cell.join("\n"));
+}
+function stripCellAttributes(cell) {
+  return cell.replace(/^\s*(?:[\w-]+="[^"]*"\s*)+\|(?!\|)/, "");
+}
+function occurrences(text2, token) {
+  return text2.split(token).length - 1;
+}
+function buildRow(row, cells, extras) {
+  const questLines = (cells[QUEST_CELL] ?? "").split("\n").filter((line) => line.trim() !== "");
+  const location = locationOf(cells[LOCATION_CELL] ?? "");
+  return {
+    row,
+    label: questLines.map(wikitextToPlain).join("; "),
+    subjects: questLines.flatMap(subjectsOf),
+    notes: wikitextToPlain(cells[NOTES_CELL] ?? ""),
+    ...location === void 0 ? {} : { location },
+    ...extras
+  };
+}
+function subjectsOf(line) {
+  const goal = START_GOAL.test(line) ? "start" : "finish";
+  return linkedPages(line).map((page) => ({ page, goal }));
+}
+function locationOf(cell) {
+  const label = wikitextToPlain(cell);
+  return label === "" ? void 0 : { label, pages: linkedPages(cell) };
+}
+function linkedPages(wikitext) {
+  return [...wikitext.matchAll(PAGE_LINK)].map((match) => (match[1] ?? "").trim()).filter((page) => page !== "" && !/^(?:file|image):/i.test(page));
+}
+
+// src/questGuide/guideProgress.ts
+var NOTES_LIMIT = 600;
+var RECIPE_FOR_DISASTER_STEPS = {
+  "another cook's quest": "Another Cook's Quest",
+  "freeing the goblin generals": "Wartface & Bentnoze",
+  "freeing the mountain dwarf": "Mountain Dwarf",
+  "freeing evil dave": "Evil Dave",
+  "freeing pirate pete": "Pirate Pete",
+  "freeing the lumbridge guide": "Lumbridge Guide",
+  "freeing skrach uglogwee": "Skrach Uglogwee",
+  "freeing sir amik varze": "Sir Amik Varze",
+  "freeing king awowogei": "King Awowogei",
+  "defeating the culinaromancer": "Culinaromancer"
+};
+var RECIPE_FOR_DISASTER = "Recipe for Disaster/";
+var DIARY_ROW = /^(easy|medium|hard|elite) (.+) diary$/i;
+var ALL_DIARIES_ROW = /^all (easy|medium|hard|elite) achievement diaries$/i;
+function questGuideView(rows, player, options) {
+  const names = questNameIndex(player.questStates);
+  const resolved = rows.map((row) => ({ row, ...resolveWith(row, player, names) }));
+  const furthest = resolved.filter((entry) => entry.status === "done" && entry.quest !== void 0).at(-1);
+  const furthestRow = furthest?.row.row ?? 0;
+  const pending = resolved.filter((entry) => entry.status !== "done");
+  const firstOpenRow = pending.find((entry) => entry.status !== "unknown")?.row.row ?? furthestRow;
+  const shown = pending.filter((entry) => entry.status !== "unknown" || entry.row.row > firstOpenRow);
+  const places = placeIndex(options.places);
+  const next = shown.slice(0, options.limit).map((entry) => nextRow(entry, { player, places, furthestRow }));
+  return {
+    rows: { total: rows.length, done: resolved.length - pending.length, unknownSkipped: pending.length - shown.length },
+    ...furthest === void 0 ? {} : { furthestDone: { row: furthest.row.row, name: furthest.row.label } },
+    next,
+    inProgress: inProgressQuests(player, resolved, options.journal),
+    byLocation: groupByLocation(next)
+  };
+}
+function resolveWith(row, player, names) {
+  const diary = diaryStatus(row.label, player.diaries);
+  if (diary !== void 0) {
+    return { status: diary };
+  }
+  for (const subject of row.subjects) {
+    const quest = names.get(gameQuestName(subject.page).toLowerCase());
+    const state = quest === void 0 ? void 0 : player.questStates[quest];
+    if (quest !== void 0 && state !== void 0) {
+      return { status: questStatus(subject, state), quest };
+    }
+  }
+  return { status: "unknown" };
+}
+function questNameIndex(questStates) {
+  return new Map(Object.keys(questStates).map((name) => [name.toLowerCase(), name]));
+}
+function gameQuestName(page) {
+  if (!page.startsWith(RECIPE_FOR_DISASTER)) {
+    return page;
+  }
+  const step = RECIPE_FOR_DISASTER_STEPS[page.slice(RECIPE_FOR_DISASTER.length).toLowerCase()];
+  return step === void 0 ? page : `Recipe for Disaster - ${step}`;
+}
+function questStatus(subject, state) {
+  if (subject.goal === "start") {
+    return state === "NOT_STARTED" ? "todo" : "done";
+  }
+  switch (state) {
+    case "FINISHED":
+      return "done";
+    case "IN_PROGRESS":
+      return "inProgress";
+    case "NOT_STARTED":
+      return "todo";
+  }
+}
+function diaryGoalOf(label) {
+  const single = DIARY_ROW.exec(label);
+  if (single !== null) {
+    return { tier: (single[1] ?? "").toUpperCase(), region: single[2] ?? "" };
+  }
+  const all = ALL_DIARIES_ROW.exec(label);
+  return all === null ? void 0 : { tier: (all[1] ?? "").toUpperCase() };
+}
+function diaryStatus(label, diaries) {
+  const goal = diaryGoalOf(label);
+  if (goal === void 0) {
+    return void 0;
+  }
+  if (diaries === void 0) {
+    return "unknown";
+  }
+  const regions = goal.region === void 0 ? Object.keys(diaries) : [goal.region];
+  return regions.every((region) => diaryTiers(diaries, region).includes(goal.tier)) ? "done" : "todo";
+}
+function diaryTiers(diaries, region) {
+  const key = Object.keys(diaries).find((name) => name.toLowerCase() === region.toLowerCase());
+  return key === void 0 ? [] : diaries[key] ?? [];
+}
+function nextRow({ row, status, quest }, { player, places, furthestRow }) {
+  const trainFirst = missingLevels(row.trainFirst, player.skills);
+  const location = row.location === void 0 ? void 0 : locationOf2(row.location.label, row.location.pages, { places, from: player.position });
+  return {
+    row: row.row,
+    name: row.label,
+    status,
+    ...row.row < furthestRow ? { behind: true } : {},
+    ...quest === void 0 || quest === row.label ? {} : { quest },
+    ...location === void 0 ? {} : { location },
+    ...trainFirst.length === 0 ? {} : { trainFirst },
+    ...row.notes === "" ? {} : { notes: shorten(row.notes) },
+    ...row.afterwards.length === 0 ? {} : { afterwards: row.afterwards }
+  };
+}
+function missingLevels(targets, skills) {
+  return targets.flatMap((target) => {
+    const current = skills[target.skill.toUpperCase()]?.level;
+    if (current !== void 0 && current >= target.level) {
+      return [];
+    }
+    return [{ skill: target.skill, level: target.level, ...current === void 0 ? {} : { current }, ...target.note === void 0 ? {} : { note: target.note } }];
+  });
+}
+function placeIndex(places) {
+  const index = /* @__PURE__ */ new Map();
+  for (const place of places) {
+    const key = place.name.toLowerCase();
+    if (!index.has(key)) {
+      index.set(key, place);
+    }
+  }
+  return index;
+}
+function locationOf2(name, pages, { places, from }) {
+  const place = pages.map((page) => places.get(page.toLowerCase())).find((candidate) => candidate !== void 0);
+  return place === void 0 || from === void 0 ? { name } : { name, distance: tileDistance(from, place) };
+}
+function shorten(notes) {
+  return notes.length <= NOTES_LIMIT ? notes : `${notes.slice(0, NOTES_LIMIT).trimEnd()}…`;
+}
+function inProgressQuests(player, resolved, journal) {
+  return Object.entries(player.questStates).filter(([, state]) => state === "IN_PROGRESS").map(([quest]) => quest).sort((a, b) => a.localeCompare(b)).map((quest) => {
+    const row = resolved.find((entry) => entry.quest === quest)?.row.row;
+    const step = journal(quest);
+    return {
+      quest,
+      ...row === void 0 ? {} : { row },
+      ...step?.currentStep === void 0 ? {} : { currentStep: step.currentStep },
+      ...step?.outdated === true ? { journalOutdated: true } : {}
+    };
+  });
+}
+function groupByLocation(next) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const row of next) {
+    if (row.location !== void 0) {
+      const group = groups.get(row.location.name) ?? { location: row.location.name, ...row.location.distance === void 0 ? {} : { distance: row.location.distance }, steps: [] };
+      group.steps.push(row.name);
+      groups.set(row.location.name, group);
+    }
+  }
+  const measured = [...groups.values()].filter((group) => group.distance !== void 0);
+  const unmeasured = [...groups.values()].filter((group) => group.distance === void 0);
+  return [...measured.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0)), ...unmeasured];
+}
+
+// src/questGuide/tools.ts
+var GUIDE_TITLES = { main: "Optimal quest guide", ironman: "Optimal quest guide/Ironman" };
+var DEFAULT_LIMIT5 = 6;
+var MAX_LIMIT5 = 15;
+var NO_JOURNAL_HINT = "Quests in progress without currentStep have no saved journal: ask the player to open them once in the Quest List.";
+function registerQuestGuideTools(server2, { wiki, player, progress, places = NAMED_PLACES }) {
+  server2.registerTool(
+    "get_quest_guide",
+    {
+      title: "Get the next steps of the optimal quest guide",
+      description: "The player's position in the OSRS Wiki optimal quest guide (the Ironman version for ironmen) and what to do next: the next rows not done in guide order with the guide's notes, location and distance from the player, and levels to train first (trainFirst, with the current level); every quest in progress with its journal currentStep; and byLocation, the upcoming rows grouped nearest first so one trip covers several. behind: true marks a row before the furthest quest done (skipped). status unknown means the game does not report that step (unlocks, museum quiz, balloons): ask the player; unknown rows before the first row not done are counted in rows.unknownSkipped, not listed. Needs the Wise Old Claude plugin.",
+      inputSchema: {
+        limit: external_exports.number().int().min(1).max(MAX_LIMIT5).optional().describe(`Rows to return, default ${DEFAULT_LIMIT5}.`),
+        guide: external_exports.enum(["main", "ironman"]).optional().describe("Override the guide picked from the account type.")
+      },
+      annotations: { readOnlyHint: true, openWorldHint: true }
+    },
+    async ({ limit = DEFAULT_LIMIT5, guide }) => {
+      const current = player();
+      if (current === void 0) {
+        return failure2("No character snapshot found. Is RuneLite running with the Wise Old Claude plugin enabled?");
+      }
+      const title = GUIDE_TITLES[guide ?? guideFor(current.accountType)];
+      try {
+        const page = await wiki.fullPage(title);
+        const rows = parseQuestGuide(page.wikitext);
+        if (rows.length === 0) {
+          return failure2(`${page.url} no longer has the guide table this tool reads; read it with wiki_page instead.`);
+        }
+        const journal = journalLookup(savedProgress(progress, current.rsn), current, progress.currentTime());
+        const view = questGuideView(rows, current, { limit, places, journal });
+        const missingJournal = view.inProgress.some((quest) => quest.currentStep === void 0);
+        return json2({ rsn: current.rsn, guide: { title: page.title, url: page.url }, ...view, ...missingJournal ? { hint: NO_JOURNAL_HINT } : {} });
+      } catch (error62) {
+        return failure2(String(error62));
+      }
+    }
+  );
+}
+function guideFor(accountType) {
+  return accountType.includes("IRONMAN") ? "ironman" : "main";
+}
+function savedProgress(progress, rsn) {
+  const loaded = progress.load(rsn);
+  return loaded.kind === "found" ? loaded.progress : void 0;
+}
+function journalLookup(saved, current, now) {
+  return (quest) => {
+    const view = questProgressFor(saved, quest, { now, questStates: current.questStates });
+    if (view.kind !== "found" || view.journal === void 0) {
+      return void 0;
+    }
+    return {
+      ...view.journal.currentStep === void 0 ? {} : { currentStep: view.journal.currentStep },
+      outdated: view.journal.outdated
+    };
+  };
+}
+
 // src/quests/tools.ts
 function registerQuestTools(server2, { progress, player }) {
   server2.registerTool(
@@ -42473,7 +42878,13 @@ function summariseSnapshot(snapshot, now = /* @__PURE__ */ new Date()) {
     ...isReported(snapshot.worldTypes) ? { worldTypes: snapshot.worldTypes } : {},
     ...isReported(snapshot.nearbyPlayers) ? { nearbyPlayers: snapshot.nearbyPlayers } : {},
     ...isReported(snapshot.grandExchange) ? { grandExchange: snapshot.grandExchange.map(summariseOffer) } : {},
-    ...isReported(snapshot.birdhouses) ? { birdhouses: summariseBirdhouses(snapshot.birdhouses, now) } : {}
+    ...summariseTimers(snapshot, now)
+  };
+}
+function summariseTimers(snapshot, now) {
+  return {
+    ...isReported(snapshot.birdhouses) ? { birdhouses: summariseBirdhouses(snapshot.birdhouses, now) } : {},
+    ...isReported(snapshot.teleportCooldowns) ? { teleportCooldowns: summariseTeleportCooldowns(snapshot.teleportCooldowns, now) } : {}
   };
 }
 function searchBank(snapshot, terms) {
@@ -42568,6 +42979,12 @@ function summariseBirdhouses({ checkedAt, spaces }, now) {
     }))
   };
 }
+function summariseTeleportCooldowns({ homeReadyAt, minigameReadyAt }, now) {
+  return { home: teleportReadiness(homeReadyAt, now), minigame: teleportReadiness(minigameReadyAt, now) };
+}
+function teleportReadiness(readyAt, now) {
+  return readyAt === null ? { ready: true } : { readyAt, ...readiness(new Date(readyAt), now) };
+}
 function readiness(readyAt, now) {
   const msLeft = readyAt.getTime() - now.getTime();
   return msLeft <= 0 ? { ready: true } : { ready: false, minutesLeft: Math.ceil(msLeft / 6e4) };
@@ -42586,7 +43003,7 @@ function named({ name, qty }) {
 }
 
 // src/version.ts
-var SERVER_VERSION = "0.13.0";
+var SERVER_VERSION = "0.14.0";
 
 // src/server.ts
 var STALE_AFTER_SECONDS2 = 120;
@@ -42609,7 +43026,7 @@ function createServer({
     "get_player_snapshot",
     {
       title: "Get player snapshot",
-      description: "Call first for every OSRS question. Returns the player's live character from RuneLite: account type, combat level, world, coins (inventory + bank), tile position with the named area and nearest wiki locations, skills (boosted shown only when it differs), inventory, worn equipment, quest points and counts with the names of quests in progress, the bank's size and capture time, Grand Exchange offers and bird house timers. Bank contents: search_bank. Quest lists: get_quests.",
+      description: "Call first for every OSRS question. Returns the player's live character from RuneLite: account type, combat level, world, coins (inventory + bank), tile position with the named area and nearest wiki locations, skills (boosted shown only when it differs), inventory, worn equipment, quest points and counts with the names of quests in progress, the bank's size and capture time, Grand Exchange offers, bird house timers and Home/minigame teleport cooldowns. Bank contents: search_bank. Quest lists: get_quests.",
       inputSchema: { rsn: external_exports.string().optional().describe("Character name. Omit for the most recently played character.") },
       annotations: { readOnlyHint: true }
     },
@@ -42697,6 +43114,7 @@ function createServer({
   registerGroundItemTools(server2, { groundItems, player: () => tradingPlayerFrom(store2.load()) });
   registerContextTools(server2, { context, player: () => currentPlayerFrom(store2.load())?.rsn });
   registerQuestTools(server2, { progress: questProgress, player: () => questPlayerFrom(store2.load()) });
+  registerQuestGuideTools(server2, { wiki, progress: questProgress, player: () => guidePlayerFrom(store2.load()) });
   registerEventTools(server2, { store: store2, context, clock: waitClock });
   return server2;
 }
@@ -42724,6 +43142,13 @@ function tradingPlayerFrom(result) {
 }
 function questPlayerFrom(result) {
   return result.kind === "found" ? { rsn: result.snapshot.rsn, questStates: result.snapshot.quests } : void 0;
+}
+function guidePlayerFrom(result) {
+  if (result.kind !== "found") {
+    return void 0;
+  }
+  const { rsn, accountType, quests, skills, progress, position } = result.snapshot;
+  return { rsn, accountType, questStates: quests, skills, position, ...progress?.diaries === void 0 ? {} : { diaries: progress.diaries } };
 }
 function currentPlayerFrom(result) {
   const position = playerPositionFrom(result);
@@ -42766,17 +43191,25 @@ var WikiClient = class {
   }
   /** Fetches an article's wikitext, following redirects so item aliases resolve. */
   async page(title) {
+    const full = await this.fullPage(title);
+    return {
+      ...full,
+      wikitext: full.wikitext.slice(0, this.maxPageChars),
+      truncated: full.wikitext.length > this.maxPageChars
+    };
+  }
+  /**
+   * Fetches an article's complete wikitext for a tool that parses it server-side, where the length cap that
+   * protects Claude's context does not apply.
+   *
+   * @throws Error when the page does not exist or the request fails
+   */
+  async fullPage(title) {
     const body = await this.get({ action: "parse", page: title, prop: "wikitext", redirects: "1" });
     if (body.parse === void 0) {
       throw new Error(`Wiki page "${title}" not found: ${body.error?.info ?? "no parse result"}`);
     }
-    const full = body.parse.wikitext["*"];
-    return {
-      title: body.parse.title,
-      url: pageUrl(body.parse.title),
-      wikitext: full.slice(0, this.maxPageChars),
-      truncated: full.length > this.maxPageChars
-    };
+    return { title: body.parse.title, url: pageUrl(body.parse.title), wikitext: body.parse.wikitext["*"] };
   }
   get(params) {
     const url2 = new URL(API_URL);
