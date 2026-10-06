@@ -1,6 +1,6 @@
 # Third-party notices
 
-Wise Old Claude's MCP server ships as one bundled file, `mcp-server/bundle/server.mjs`. Besides the project's own
+Wise Old Claude's MCP server ships as one bundled file, `claude-plugin/mcp-server/bundle/server.mjs`. Besides the project's own
 code (BSD 2-Clause, see [LICENSE](LICENSE)) it contains the npm packages and the game data listed here.
 
 ## Game data

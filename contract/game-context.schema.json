@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wise-old-claude.local/game-context.schema.json",
+  "title": "GameContext",
+  "description": "The player's own recent game messages and the interface they have open. Never contains other players' chat (public, private, friends, clan, trade or broadcasts). Written by the plugin to context/<rsn>.json inside the snapshot directory at most every 2 game ticks when something changed, and every 50 ticks (30 seconds) while an interface stays open, so an open interface in an older file is stale. Fields that do not apply are left out rather than written as null. Bump schemaVersion on any breaking change.",
+  "type": "object",
+  "required": ["schemaVersion", "rsn", "capturedAt", "messages"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "rsn": { "type": "string", "minLength": 1 },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "messages": {
+      "description": "Up to the last 30 messages, oldest first: game messages (including filtered game spam), RuneLite notices, NPC and player dialogue lines, message boxes and examine texts. Markup is stripped.",
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "required": ["at", "text", "repeats"],
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "description": "When the message last arrived.",
+            "type": "string",
+            "format": "date-time"
+          },
+          "speaker": {
+            "description": "Who said a dialogue line: an NPC or the player. Absent for every other message.",
+            "type": "string",
+            "minLength": 1
+          },
+          "text": { "type": "string", "minLength": 1 },
+          "repeats": {
+            "description": "How many times the message arrived back to back, e.g. a skilling message repeated each action.",
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "openInterface": {
+      "description": "The tracked interface the player has open; absent when none is. A shop carries its name and stock, a dialogue its speaker, line or options; a bank or the Grand Exchange carries only its kind.",
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["shop", "bank", "grandExchange", "dialogue"] },
+        "name": {
+          "description": "The shop's title. Absent when it could not be read.",
+          "type": "string",
+          "minLength": 1
+        },
+        "stock": {
+          "description": "The shop's items in display order with the quantity in stock; sold-out items have qty 0. No prices: the client does not expose shop price multipliers.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "qty"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "integer", "minimum": 0 },
+              "name": { "type": "string", "minLength": 1 },
+              "qty": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "speaker": {
+          "description": "Who is talking in the dialogue box. Absent for options and message boxes.",
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "description": "The dialogue line, or the prompt above the options.",
+          "type": "string"
+        },
+        "options": {
+          "description": "The choices the dialogue offers, top to bottom.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

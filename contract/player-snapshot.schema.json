@@ -1,0 +1,335 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wise-old-claude.local/player-snapshot.schema.json",
+  "title": "PlayerSnapshot",
+  "description": "Read-only snapshot of an OSRS character, written by the RuneLite plugin and read by the MCP server. Bump schemaVersion on any breaking change.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "rsn",
+    "accountType",
+    "capturedAt",
+    "world",
+    "combatLevel",
+    "coins",
+    "position",
+    "skills",
+    "inventory",
+    "equipment",
+    "bank",
+    "quests"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "rsn": { "type": "string", "minLength": 1 },
+    "accountType": {
+      "enum": [
+        "NORMAL",
+        "IRONMAN",
+        "ULTIMATE_IRONMAN",
+        "HARDCORE_IRONMAN",
+        "GROUP_IRONMAN",
+        "HARDCORE_GROUP_IRONMAN",
+        "UNRANKED_GROUP_IRONMAN",
+        "UNKNOWN"
+      ]
+    },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "world": { "type": "integer" },
+    "combatLevel": { "type": "integer", "minimum": 3, "maximum": 126 },
+    "coins": {
+      "description": "Coins carried in the inventory plus coins in the last-seen bank.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "position": {
+      "type": "object",
+      "required": ["x", "y", "plane", "regionId"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "plane": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "regionId": { "type": "integer" }
+      }
+    },
+    "skills": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/skill" }
+    },
+    "inventory": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/itemStack" }
+    },
+    "equipment": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/itemStack" }
+    },
+    "bank": {
+      "description": "Bank contents as of the last time the bank was open, possibly from an earlier session; null when the bank has never been seen. Placeholders and bank fillers are excluded.",
+      "type": ["object", "null"],
+      "required": ["capturedAt", "items"],
+      "additionalProperties": false,
+      "properties": {
+        "capturedAt": { "type": "string", "format": "date-time" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/itemStack" }
+        }
+      }
+    },
+    "quests": {
+      "description": "Quest name to progress, refreshed periodically rather than on every write.",
+      "type": "object",
+      "additionalProperties": { "enum": ["NOT_STARTED", "IN_PROGRESS", "FINISHED"] }
+    },
+    "questPoints": {
+      "description": "Total quest points, refreshed alongside quests. Optional: plugins older than this field omit it. Null until the first quest refresh after the plugin starts.",
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "fairyRingsUnlocked": {
+      "description": "Whether Fairytale II has progressed far enough (Fairy Godfather's permission, quest varbit 2326 >= 40, or the quest finished) to use fairy rings. Says nothing about the dramen/lunar staff that travel still needs unless the elite Lumbridge & Draynor diary is done. Refreshed alongside quests. Optional: plugins older than this field omit it. Null until the first quest refresh after the plugin starts.",
+      "type": ["boolean", "null"]
+    },
+    "combat": {
+      "description": "Combat setup and the current fight. Optional: plugins older than this field omit it.",
+      "type": ["object", "null"],
+      "required": ["target", "attackStyle", "spellbook", "activePrayers", "specialAttackPercent"],
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "description": "Who the player is interacting with (Actor#getInteracting); null when not interacting, which is how a finished fight reads. Another player is reduced to kind and combat level: never named.",
+          "type": ["object", "null"],
+          "required": ["kind", "name", "combatLevel", "npcId", "hpPercent"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["NPC", "PLAYER"] },
+            "name": { "description": "NPC name; null for players.", "type": ["string", "null"] },
+            "combatLevel": { "description": "0 for non-combat NPCs.", "type": "integer", "minimum": 0 },
+            "npcId": { "description": "Tells same-named NPC variants apart; null for players.", "type": ["integer", "null"], "minimum": 0 },
+            "hpPercent": {
+              "description": "Health bar fill, rounded up; null until the bar has been shown, and always null for players.",
+              "type": ["integer", "null"],
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "attackStyle": {
+          "description": "In-game style name of the selected style, e.g. \"Aggressive\", \"Longrange\", \"Defensive Casting\"; null when unknown.",
+          "type": ["string", "null"]
+        },
+        "spellbook": {
+          "description": "Null when the game reports a book outside these four.",
+          "enum": ["STANDARD", "ANCIENT", "LUNAR", "ARCEUUS", null]
+        },
+        "activePrayers": {
+          "description": "Display names of the prayers that are on, in prayer-book order.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "specialAttackPercent": { "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "status": {
+      "description": "Run energy, weight, poison, disease and timed effects. Optional: plugins older than this field omit it.",
+      "type": ["object", "null"],
+      "required": ["runEnergyPercent", "weightKg", "poison", "poisonDamage", "diseased", "effects"],
+      "additionalProperties": false,
+      "properties": {
+        "runEnergyPercent": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "weightKg": { "description": "Negative with enough weight-reducing gear.", "type": "integer" },
+        "poison": { "enum": ["NONE", "POISONED", "ENVENOMED"] },
+        "poisonDamage": { "description": "Damage of the next poison or venom hit; null when not poisoned.", "type": ["integer", "null"], "minimum": 1 },
+        "diseased": { "type": "boolean" },
+        "effects": {
+          "description": "Effect name (e.g. \"Stamina\", \"Antifire\", \"Super antifire\", \"Antipoison\", \"Antivenom\", \"Overload\", \"Divine super combat\", \"Teleblock\") to whole seconds left as of capturedAt. Effects that count down in multi-tick steps (antifires, overload, stamina, antipoison, antivenom) are an upper bound accurate to one step.",
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "gameRevision": {
+      "description": "Game build the client runs (Client#getRevision). Optional: plugins older than this field omit it.",
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "progress": {
+      "description": "Progress read straight from the client, so it does not depend on WikiSync. Optional: plugins older than this field omit it.",
+      "type": ["object", "null"],
+      "required": ["slayer", "diaries", "combatAchievements", "sessionXp"],
+      "additionalProperties": false,
+      "properties": {
+        "slayer": {
+          "type": "object",
+          "required": ["task", "points", "streak"],
+          "additionalProperties": false,
+          "properties": {
+            "task": {
+              "description": "The assigned task; null when none is assigned.",
+              "type": ["object", "null"],
+              "required": ["creature", "remaining", "location"],
+              "additionalProperties": false,
+              "properties": {
+                "creature": { "description": "Task name from the game cache, e.g. \"Cave crawlers\"; null if the cache lookup failed.", "type": ["string", "null"] },
+                "remaining": { "description": "Kills left.", "type": "integer", "minimum": 1 },
+                "location": { "description": "Area the task is restricted to (Konar's tasks); null when it can be done anywhere.", "type": ["string", "null"] }
+              }
+            },
+            "points": { "type": "integer", "minimum": 0 },
+            "streak": { "description": "Consecutive tasks completed for the current master's streak (Krystilia and Mortimer keep their own).", "type": "integer", "minimum": 0 }
+          }
+        },
+        "diaries": {
+          "description": "In-game diary region name (e.g. \"Lumbridge & Draynor\", \"Kourend & Kebos\", \"Western Provinces\") to its completed tiers; every region present, empty when no tier is complete.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "enum": ["EASY", "MEDIUM", "HARD", "ELITE"] }
+          }
+        },
+        "combatAchievements": {
+          "type": "object",
+          "required": ["points", "completedTiers"],
+          "additionalProperties": false,
+          "properties": {
+            "points": { "type": "integer", "minimum": 0 },
+            "completedTiers": {
+              "description": "Completed tiers, easiest first.",
+              "type": "array",
+              "items": { "enum": ["EASY", "MEDIUM", "HARD", "ELITE", "MASTER", "GRANDMASTER"] }
+            }
+          }
+        },
+        "sessionXp": {
+          "description": "XP gained since login (a world hop keeps the session); null while the login stat sync is landing.",
+          "type": ["object", "null"],
+          "required": ["since", "gained"],
+          "additionalProperties": false,
+          "properties": {
+            "since": { "type": "string", "format": "date-time" },
+            "gained": {
+              "description": "Skill name to XP gained; skills without gains are left out.",
+              "type": "object",
+              "additionalProperties": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      }
+    },
+    "worldTypes": {
+      "description": "Rulesets of the current world; empty on a standard free-to-play world. pvp and bounty_hunter match find_nearest's worldType. Optional: plugins older than this field omit it.",
+      "type": ["array", "null"],
+      "items": {
+        "enum": [
+          "members",
+          "pvp",
+          "bounty_hunter",
+          "pvp_arena",
+          "skill_total",
+          "quest_speedrunning",
+          "high_risk",
+          "last_man_standing",
+          "beta",
+          "no_save",
+          "tournament",
+          "fresh_start",
+          "deadman",
+          "seasonal"
+        ]
+      }
+    },
+    "nearbyPlayers": {
+      "description": "Number of other players in the loaded scene; an aggregate only, never who or where. Null while no scene is loaded. Optional: plugins older than this field omit it.",
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "grandExchange": {
+      "description": "Occupied Grand Exchange slots in slot order; empty when none are occupied. Null for ironmen, who cannot trade. Optional: plugins older than this field omit it.",
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": ["slot", "itemId", "itemName", "side", "status", "pricePerItem", "quantity", "quantityTraded", "coinsTraded"],
+        "additionalProperties": false,
+        "properties": {
+          "slot": { "description": "Slot number as the game shows it.", "type": "integer", "minimum": 1, "maximum": 8 },
+          "itemId": { "type": "integer", "minimum": 0 },
+          "itemName": { "type": "string" },
+          "side": { "enum": ["BUY", "SELL"] },
+          "status": {
+            "description": "COMPLETE and CANCELLED offers still hold items or coins until the player collects them.",
+            "enum": ["ACTIVE", "COMPLETE", "CANCELLED"]
+          },
+          "pricePerItem": { "description": "Offered price per item, in coins.", "type": "integer", "minimum": 0 },
+          "quantity": { "description": "Items the offer was placed for.", "type": "integer", "minimum": 0 },
+          "quantityTraded": { "description": "Items bought or sold so far.", "type": "integer", "minimum": 0 },
+          "coinsTraded": { "description": "Coins spent on a buy offer, or received for a sell offer, so far.", "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "birdhouses": {
+      "description": "The four Fossil Island bird house spaces as last read on the island, possibly sessions ago; null until the character has been seen there. Optional: plugins older than this field omit it.",
+      "type": ["object", "null"],
+      "required": ["checkedAt", "spaces"],
+      "additionalProperties": false,
+      "properties": {
+        "checkedAt": { "description": "When the plugin last read the spaces on Fossil Island.", "type": "string", "format": "date-time" },
+        "spaces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["location", "state", "birdhouse", "readyAt"],
+            "additionalProperties": false,
+            "properties": {
+              "location": { "description": "The space as RuneLite's Time Tracking names it, e.g. \"Mushroom Meadow (North)\".", "type": "string" },
+              "state": {
+                "description": "BUILT is a bird house without seeds, which catches nothing.",
+                "enum": ["EMPTY", "BUILT", "SEEDED", "UNKNOWN"]
+              },
+              "birdhouse": { "description": "The bird house's item name; null when empty or unknown.", "type": ["string", "null"] },
+              "readyAt": {
+                "description": "When a seeded bird house is full (50 minutes after seeding); null unless seeded, and null when it was seeded while the plugin was not watching.",
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      }
+    },
+    "teleportCooldowns": {
+      "description": "When Home Teleport and the minigame teleport (Grouping) can next be cast, from the game's record of the last cast, so it stays valid across sessions. A time in the past means ready now. The game stores the cast to the minute, so a ready time can be up to a minute early. Optional: plugins older than this field omit it.",
+      "type": ["object", "null"],
+      "required": ["homeReadyAt", "minigameReadyAt"],
+      "additionalProperties": false,
+      "properties": {
+        "homeReadyAt": { "description": "30 minutes after the last Home Teleport; null when never cast.", "type": ["string", "null"], "format": "date-time" },
+        "minigameReadyAt": { "description": "20 minutes after the last minigame teleport; null when never cast.", "type": ["string", "null"], "format": "date-time" }
+      }
+    }
+  },
+  "$defs": {
+    "skill": {
+      "type": "object",
+      "required": ["level", "xp", "boosted"],
+      "additionalProperties": false,
+      "properties": {
+        "level": { "type": "integer", "minimum": 1, "maximum": 99 },
+        "xp": { "type": "integer", "minimum": 0 },
+        "boosted": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "itemStack": {
+      "type": "object",
+      "required": ["id", "name", "qty"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "integer", "minimum": 0 },
+        "name": { "type": "string" },
+        "qty": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

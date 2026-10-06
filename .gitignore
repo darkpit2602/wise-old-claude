@@ -1,0 +1,5 @@
+build/
+.gradle/
+node_modules/
+dist/
+claude-plugin/mcp-server/src/**/*.schema.ts

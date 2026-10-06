@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wise-old-claude.local/companion-status.schema.json",
+  "title": "CompanionStatus",
+  "description": "Written by the MCP server to companion/status.json inside the snapshot directory when it starts and once a minute while it runs, so the RuneLite plugin can tell whether the Claude Code side is set up and active. The server is the only writer and only writes when the directory already exists. Bump schemaVersion on any breaking change.",
+  "type": "object",
+  "required": ["schemaVersion", "lastSeen", "serverVersion"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "lastSeen": {
+      "description": "When the server last wrote the file; it rewrites it every minute while running.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "serverVersion": {
+      "description": "The MCP server's version, e.g. 0.13.0.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    }
+  }
+}

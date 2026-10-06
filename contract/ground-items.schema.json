@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wise-old-claude.local/ground-items.schema.json",
+  "title": "GroundItems",
+  "description": "Items lying on the ground in the scene the RuneLite client has loaded, roughly 50 tiles each way around the player: drops, loot and spawns. Never names other players: ownership only says whether a stack is the player's own drop, their group's, another player's, or nobody's. Written by the plugin to ground-items/<rsn>.json inside the snapshot directory, rebuilt at most every 2 game ticks (1.2 seconds) after items appear, disappear or change quantity, and rewritten only when it changed. Kept apart from the character snapshot so that file stays small. Bump schemaVersion on any breaking change.",
+  "type": "object",
+  "required": ["schemaVersion", "rsn", "capturedAt", "world", "instance", "origin", "truncated", "items"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "rsn": { "type": "string", "minLength": 1 },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "world": { "type": "integer", "minimum": 0 },
+    "instance": {
+      "description": "True inside an instance (raids, some bosses and quests). Tiles are then instance coordinates, as the player's snapshot position is, and do not match wiki coordinates.",
+      "type": "boolean"
+    },
+    "origin": {
+      "description": "The player's tile when the index was built. Only rebuilt when items change, so it can lag a walking player.",
+      "type": "object",
+      "required": ["x", "y", "plane", "regionId"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "integer", "minimum": 0 },
+        "y": { "type": "integer", "minimum": 0 },
+        "plane": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "regionId": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "truncated": {
+      "description": "True when the scene held more item stacks than the plugin's cap; only the ones nearest the origin were kept.",
+      "type": "boolean"
+    },
+    "items": {
+      "description": "Item name to its variants, nearest variant first. A variant is one item id with one ownership: noted and unnoted items differ by id, and an ironman may take their own drop but not another player's stack of the same item.",
+      "type": "object",
+      "propertyNames": { "minLength": 1 },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": ["id", "ownership", "gePrice", "haPrice", "stacks"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "integer", "minimum": 0 },
+            "ownership": {
+              "description": "self: the player's own drop. group: their group ironman group's. other: another player's drop, which ironmen cannot pick up. none: a spawn or an item nobody owns.",
+              "enum": ["none", "self", "other", "group"]
+            },
+            "gePrice": {
+              "description": "Grand Exchange guide price of one item as RuneLite reports it; 0 when untradeable or unknown. Coins are 1 and platinum tokens 1000.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "haPrice": {
+              "description": "High alchemy value of one item; 0 when it cannot be alched for coins.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "stacks": {
+              "description": "Tiles holding this variant, nearest the origin first. Each stack is [x, y, plane, quantity]; several unstackable items on one tile are one stack.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  { "type": "integer", "minimum": 0 },
+                  { "type": "integer", "minimum": 0 },
+                  { "type": "integer", "minimum": 0, "maximum": 3 },
+                  { "type": "integer", "minimum": 1 }
+                ],
+                "items": false,
+                "minItems": 4
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

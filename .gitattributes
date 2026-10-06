@@ -1,0 +1,2 @@
+# Generated single-file MCP server bundle: stable LF output for bundle:check, collapsed in diffs
+claude-plugin/mcp-server/bundle/*.mjs text eol=lf linguist-generated=true -diff

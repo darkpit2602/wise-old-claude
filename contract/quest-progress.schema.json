@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wise-old-claude.local/quest-progress.schema.json",
+  "title": "QuestProgress",
+  "description": "Where the player is inside their quests: the last quest journal the player opened for each quest, in the game's own words, and a stage number per in-progress quest. Written by the plugin to quests/<rsn>.json inside the snapshot directory when a journal is captured or a stage changes; journals survive client restarts. Fields that do not apply are left out rather than written as null. Bump schemaVersion on any breaking change.",
+  "type": "object",
+  "required": ["schemaVersion", "rsn", "capturedAt", "journals"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "rsn": { "type": "string", "minLength": 1 },
+    "capturedAt": {
+      "description": "When the plugin wrote the file.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "stages": {
+      "description": "Quest name to the quest's raw progress value, for in-progress quests whose progress variable is known (table from the Quest Helper plugin). The values are undocumented and only meaningful as a change signal: a stage that differs from a journal's stageAtCapture means the player has progressed since the journal was saved. Absent until the plugin has read quests this session.",
+      "type": "object",
+      "additionalProperties": { "type": "integer" }
+    },
+    "journals": {
+      "description": "Quest name (RuneLite's quest name) to the journal text last seen in the quest journal interface. Only quests whose journal the player has opened are present.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["capturedAt", "lines"],
+        "additionalProperties": false,
+        "properties": {
+          "capturedAt": {
+            "description": "When the journal text was read from the client.",
+            "type": "string",
+            "format": "date-time"
+          },
+          "stageAtCapture": {
+            "description": "The quest's stage value when the journal was read. Absent when the quest's progress variable is unknown.",
+            "type": "integer"
+          },
+          "lines": {
+            "description": "The journal's visual lines top to bottom, markup stripped and blank lines dropped. A sentence wrapped over several lines appears as several entries.",
+            "type": "array",
+            "maxItems": 250,
+            "items": {
+              "type": "object",
+              "required": ["text", "done"],
+              "additionalProperties": false,
+              "properties": {
+                "text": { "type": "string", "minLength": 1 },
+                "done": {
+                  "description": "True when the game draws the line struck through, which marks a finished step.",
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

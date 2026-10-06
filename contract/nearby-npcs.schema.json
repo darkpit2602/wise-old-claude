@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wise-old-claude.local/nearby-npcs.schema.json",
+  "title": "NearbyNpcs",
+  "description": "Named NPCs the player can interact with (fishing spots, monsters, shopkeepers, bankers) in the scene the RuneLite client has loaded, roughly 50 tiles each way around the player. Never contains other players or pets. Written by the plugin to npcs/<rsn>.json inside the snapshot directory, rebuilt every 5 game ticks (3 seconds) and rewritten only when it changed. Kept apart from the character snapshot so that file stays small. Bump schemaVersion on any breaking change.",
+  "type": "object",
+  "required": ["schemaVersion", "rsn", "capturedAt", "world", "instance", "origin", "truncated", "npcs"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "rsn": { "type": "string", "minLength": 1 },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "world": { "type": "integer", "minimum": 0 },
+    "instance": {
+      "description": "True inside an instance (raids, some bosses and quests). Tiles are then instance coordinates, as the player's snapshot position is, and do not match wiki coordinates.",
+      "type": "boolean"
+    },
+    "origin": {
+      "description": "The player's tile when the index was built.",
+      "type": "object",
+      "required": ["x", "y", "plane", "regionId"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "integer", "minimum": 0 },
+        "y": { "type": "integer", "minimum": 0 },
+        "plane": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "regionId": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "truncated": {
+      "description": "True when the scene held more NPCs than the plugin's cap; only the ones nearest the origin were kept.",
+      "type": "boolean"
+    },
+    "npcs": {
+      "description": "NPC name to its variants, nearest variant first. Same-named NPCs with different ids are separate variants because they differ in options or combat level (one fishing spot offers Cage and Harpoon, another Net and Bait).",
+      "type": "object",
+      "propertyNames": { "minLength": 1 },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": ["id", "combatLevel", "actions", "tiles"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "integer", "minimum": 0 },
+            "combatLevel": {
+              "description": "0 when the NPC has no combat level.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "actions": {
+              "description": "Right-click options in menu order, e.g. [\"Cage\", \"Harpoon\"] or [\"Attack\"].",
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "tiles": {
+              "description": "Tiles where an NPC of this variant stands, nearest the origin first. Each tile is [x, y, plane].",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  { "type": "integer", "minimum": 0 },
+                  { "type": "integer", "minimum": 0 },
+                  { "type": "integer", "minimum": 0, "maximum": 3 }
+                ],
+                "items": false,
+                "minItems": 3
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
